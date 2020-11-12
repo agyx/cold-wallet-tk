@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# coding=utf-8
 
-from prng import PrngV1
+from prng import Prng
 import optparse
 import binascii
 import getpass
@@ -12,16 +13,16 @@ version = "v0.2.2"
 # https://primes.utm.edu/lists/2small/
 # https://www.numberempire.com/primenumbers.php
 widthSets = [
-    (32, 2**32-5),
-    (64, 2**64-59),
-    (96, 2**96-17),
-    (128, 2**128-159),
-    (160, 2**160-47),
-    (192, 2**192-237),
-    (224, 2**224-63),
-    (256, 2**256-189),
-    (384, 2**256-317),
-    (512, 2**512-569),
+    (32, 2 ** 32 - 5),
+    (64, 2 ** 64 - 59),
+    (96, 2 ** 96 - 17),
+    (128, 2 ** 128 - 159),
+    (160, 2 ** 160 - 47),
+    (192, 2 ** 192 - 237),
+    (224, 2 ** 224 - 63),
+    (256, 2 ** 256 - 189),
+    (384, 2 ** 256 - 317),
+    (512, 2 ** 512 - 569),
 ]
 
 
@@ -38,13 +39,12 @@ class Shamir:
                 self.P = widthSet[1]
                 break
 
-
         if self.P == 0:
             raise ValueError("incorrect width: %d" % width)
 
     @staticmethod
     def fPoly(x, poly, prime):
-        result = 0L
+        result = 0
         for i in range(len(poly)):
             result += poly[i] * x ** i
         return result % prime
@@ -55,9 +55,9 @@ class Shamir:
         if a == 0 and b == 0:
             return 0, 0, 0
         if b == 0:
-            return a/abs(a), 0, abs(a)
+            return a // abs(a), 0, abs(a)
         (u, v, p) = Shamir.bezout(b, a % b)
-        return v, (u - v*(a/b)), p
+        return v, (u - v * (a // b)), p
 
     @staticmethod
     def inv(x, m):
@@ -69,8 +69,8 @@ class Shamir:
         if secret >= self.P:
             raise ValueError("secret must be smaller than P")
 
-        prng = PrngV1(deterministic=True)
-        prng.addEntropy(str(secret))
+        prng = Prng(deterministic=True)
+        prng.addEntropy(secret.to_bytes(512, byteorder="big"))
 
         a = [0] * self.k
 
@@ -83,12 +83,12 @@ class Shamir:
 
         for i in range(self.n):
             while True:
-                r = long(prng.getRandomLong(16))
+                r = int(prng.getRandomLong(16))
                 if r != 0 and r not in x:
                     x += [r]
                     break
 
-        y = [0]*self.n
+        y = [0] * self.n
 
         for i in range(self.n):
             y[i] = Shamir.fPoly(x[i], a, self.P)
@@ -111,8 +111,8 @@ class Shamir:
             sy[i] = shares[i][1]
 
         for i in range(self.k):
-            num = 1L
-            den = 1L
+            num = 1
+            den = 1
             for j in range(self.k):
                 if i != j:
                     num *= sx[j]
@@ -122,8 +122,7 @@ class Shamir:
         return secret % self.P
 
 
-class ShareProtocolV1:
-
+class ShareProtocolV1(object):
     def __init__(self, k=None, width=None, share=None):
         self.version = 1
 
@@ -134,24 +133,24 @@ class ShareProtocolV1:
                 raise ValueError("unknown share version: %d" % shareVersion)
 
             self.k = k
-            self.width = len(share)*8-32
+            self.width = len(share) * 8 - 32
         else:
             self.k = k
             self.width = width
 
     def encode(self, share):
-        prng = PrngV1(deterministic=True)
-        prng.addEntropy(str(share[0])+str(share[1]))
-        result = ""
-        result += chr(prng.getRandomLong(8) & 0xF0 | self.version)
-        result += chr(prng.getRandomLong(8) & 0xF0 | self.k)
+        prng = Prng(deterministic=True)
+        prng.addEntropy(share[0].to_bytes(512, byteorder="big") + share[1].to_bytes(512, byteorder="big"))
+        result = b""
+        result += bytes([prng.getRandomLong(8) & 0xF0 | self.version])
+        result += bytes([prng.getRandomLong(8) & 0xF0 | self.k])
         result += rawFromLong(share[0], 16)
         result += rawFromLong(share[1], self.width)
         return result
 
     def decodeAll(self, share):
-        version = ord(share[0]) & 0x0F
-        k = ord(share[1]) & 0x0F
+        version = share[0] & 0x0F
+        k = share[1] & 0x0F
         x = longFromRaw(share[2:4])
         y = longFromRaw(share[4:])
         return version, k, x, y
@@ -162,21 +161,26 @@ class ShareProtocolV1:
             raise Exception("incompatible version in share: %d" % version)
         if k != self.k:
             raise Exception("incompatible k in share: %d" % k)
-        return (x,y)
+        return (x, y)
 
 
 def cliSplit(k, n, secret, lang):
     formatBIP39 = False
-    try:
-        raw = binascii.unhexlify(secret)
-    except:
+
+    while True:
+        try:
+            raw = binascii.unhexlify(secret)
+            break
+        except Exception:
+            pass
         try:
             raw = bip39.rawFromBIP39(secret.split())
             formatBIP39 = True
-        except:
-            raw = "SHTF" + chr(len(secret)) + secret
-            len_stuff = 512/8 - len(raw)
-            raw += " " * len_stuff
+        except Exception:
+            raw = b"SHTF" + (len(secret)).to_bytes(1, byteorder="big") + secret.encode("utf-8")
+            len_stuff = 512 // 8 - len(raw)
+            raw += b" " * len_stuff
+        break
 
     shamir = Shamir(k=k, n=n, width=len(raw) * 8)
 
@@ -187,9 +191,11 @@ def cliSplit(k, n, secret, lang):
     encodedShares = map(protocol.encode, shares)
 
     if formatBIP39:
-        formatedShares = map(lambda x: " ".join(bip39.BIP39FromRaw(x, lang=lang)), encodedShares)
+        formatedShares = [" ".join(bip39.BIP39FromRaw(x, lang=lang)) for x in encodedShares]
     else:
-        formatedShares = map(binascii.hexlify, encodedShares)
+        formatedShares = [binascii.hexlify(x).decode("utf-8") for x in encodedShares]
+
+    #formatedShares = [x.encode("utf-8") for x in formatedShares]
 
     return formatedShares
 
@@ -202,7 +208,6 @@ def cliShareGenerator():
 
 
 def cliCombine(shareGenerator, lang):
-
     protocol = None
     shares = []
 
@@ -231,13 +236,13 @@ def cliCombine(shareGenerator, lang):
         formattedSecret = " ".join(bip39.BIP39FromLong(secret, width=protocol.width, lang=lang))
     else:
         raw = rawFromLong(secret, width=protocol.width)
-        if raw.startswith("SHTF"):
-            len_text = ord(raw[4])
-            formattedSecret = raw[5:5+len_text]
+        if raw.startswith(b"SHTF"):
+            len_text = raw[4]
+            formattedSecret = raw[5:5 + len_text]
         else:
             formattedSecret = binascii.hexlify(raw)
 
-    return formattedSecret
+    return formattedSecret.decode("utf-8")
 
 
 if __name__ == "__main__":
