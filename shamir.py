@@ -64,12 +64,12 @@ class Shamir:
         """ Calcule y dans [[0, m-1]] tel que x*y % m == 1 """
         return Shamir.bezout(x, m)[0] % m
 
-    def split(self, secret):
+    def split(self, secret, deterministic=True):
 
         if secret >= self.P:
             raise ValueError("secret must be smaller than P")
 
-        prng = Prng(deterministic=True)
+        prng = Prng(deterministic=deterministic)
         prng.addEntropy(secret.to_bytes(512, byteorder="big"))
 
         a = [0] * self.k
@@ -123,8 +123,9 @@ class Shamir:
 
 
 class ShareProtocolV1(object):
-    def __init__(self, k=None, width=None, share=None):
+    def __init__(self, k=None, width=None, share=None, deterministic=True):
         self.version = 1
+        self.deterministic = deterministic
 
         if share:
             (shareVersion, k, _, _) = self.decodeAll(share)
@@ -139,7 +140,7 @@ class ShareProtocolV1(object):
             self.width = width
 
     def encode(self, share):
-        prng = Prng(deterministic=True)
+        prng = Prng(deterministic=self.deterministic)
         prng.addEntropy(share[0].to_bytes(512, byteorder="big") + share[1].to_bytes(512, byteorder="big"))
         result = b""
         result += bytes([prng.getRandomLong(8) & 0xF0 | self.version])
@@ -164,7 +165,7 @@ class ShareProtocolV1(object):
         return (x, y)
 
 
-def cliSplit(k, n, secret, lang):
+def cliSplit(k, n, secret, lang, deterministic=True):
     formatBIP39 = False
 
     while True:
@@ -184,7 +185,7 @@ def cliSplit(k, n, secret, lang):
 
     shamir = Shamir(k=k, n=n, width=len(raw) * 8)
 
-    shares = shamir.split(longFromRaw(raw))
+    shares = shamir.split(longFromRaw(raw), deterministic)
 
     protocol = ShareProtocolV1(k=shamir.k, width=shamir.width)
 
@@ -195,7 +196,7 @@ def cliSplit(k, n, secret, lang):
     else:
         formatedShares = [binascii.hexlify(x).decode("utf-8") for x in encodedShares]
 
-    #formatedShares = [x.encode("utf-8") for x in formatedShares]
+    # formatedShares = [x.encode("utf-8") for x in formatedShares]
 
     return formatedShares
 
@@ -322,7 +323,7 @@ if __name__ == "__main__":
 
         secret = getpass.getpass("Secret (text, hex or BIP39):")
 
-        shares = cliSplit(options.k, options.n, secret, options.lang)
+        shares = cliSplit(options.k, options.n, secret, options.lang, deterministic=False)
 
         autotest(options.k, shares, secret)
 
