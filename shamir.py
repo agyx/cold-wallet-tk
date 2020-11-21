@@ -238,11 +238,11 @@ def cliCombine(shareGenerator, lang):
         raw = rawFromLong(secret, width=protocol.width)
         if raw.startswith(b"SHTF"):
             len_text = raw[4]
-            formattedSecret = raw[5:5 + len_text]
+            formattedSecret = (raw[5:5 + len_text]).decode("utf-8")
         else:
-            formattedSecret = binascii.hexlify(raw)
+            formattedSecret = binascii.hexlify(raw).decode("utf-8")
 
-    return formattedSecret.decode("utf-8")
+    return formattedSecret
 
 
 if __name__ == "__main__":

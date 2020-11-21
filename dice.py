@@ -76,7 +76,7 @@ def value(d1, d2, d3, d4, d5):
 class DiceEntropy(object):
 
     def __init__(self):
-        self.result = 0L
+        self.result = 0
         self.length = 0
         self.count_rolls = 0
 

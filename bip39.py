@@ -88,7 +88,7 @@ def rawFromBIP39(mnemonic):
     payload = buffer >> checksumLen
     # print "buffer: %x" % buffer
     for i in range(payloadLen // 8):
-        result += chr(payload & 0xFF)
+        result += bytes([payload & 0xFF])
         payload >>= 8
     result = result[::-1]
     m = hashlib.sha256()
@@ -115,7 +115,7 @@ def longFromBIP39(mnemonic):
 def hexFromBIP39(mnemonic):
     result = ""
     for char in rawFromBIP39(mnemonic):
-        result += "%02x" % ord(char)
+        result += "%02x" % char
     return result
 
 
@@ -148,12 +148,12 @@ def BIP39FromHex(hexSeed, lang="english"):
 
 
 def BIP39FromLong(longValue, width=256, lang="english"):
-    raw = ""
+    raw = []
     buffer = longValue
     for i in range(width // 8):
-        raw += chr(buffer & 0xFF)
+        raw += bytes([buffer & 0xFF])
         buffer >>= 8
-    return BIP39FromRaw(raw[::-1], lang)
+    return BIP39FromRaw(bytes(raw[::-1]), lang)
 
 
 if __name__ == "__main__":
@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     try:
         if BIP39Format:
-            print(binascii.hexlify(rawFromBIP39(mnemonic)))
+            print(binascii.hexlify(rawFromBIP39(mnemonic)).decode("utf-8"))
         else:
             print((" ".join(BIP39FromRaw(raw, lang=options.lang))))
     except Exception as e:
