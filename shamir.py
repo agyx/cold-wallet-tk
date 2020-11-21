@@ -245,6 +245,44 @@ def cliCombine(shareGenerator, lang):
     return formattedSecret
 
 
+def autotest(k, shares, expected):
+    n = len(shares)
+    counter = [0] * k
+    while True:
+        duplicate = False
+        for i in range(k):
+            for j in range(k):
+                if i == j:
+                    continue
+                if counter[i] == counter[j]:
+                    duplicate = True
+                    break
+            if duplicate:
+                break
+        if not duplicate:
+            # print("testing {}".format(counter))
+            # selected_shares = [shares[counter[i]] for i in range(k)])
+
+            def gen_shares():
+                for i in range(k):
+                    yield shares[counter[i]]
+
+            found = cliCombine(gen_shares, lang="english")
+            if found != expected:
+                print("error: found '{}' selected_shares indices: {}".format(found, counter))
+                exit(1)
+        shall_exit = True
+        for i in range(k):
+            counter[i] += 1
+            if counter[i] == n:
+                counter[i] = 0
+            else:
+                shall_exit = False
+                break
+        if shall_exit:
+            break
+
+
 if __name__ == "__main__":
 
     parser = optparse.OptionParser()
@@ -285,6 +323,8 @@ if __name__ == "__main__":
         secret = getpass.getpass("Secret (text, hex or BIP39):")
 
         shares = cliSplit(options.k, options.n, secret, options.lang)
+
+        autotest(options.k, shares, secret)
 
         for i in range(len(shares)):
             print("share %d: %s" % (i + 1, shares[i]))
