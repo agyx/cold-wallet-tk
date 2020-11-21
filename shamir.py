@@ -77,7 +77,7 @@ class Shamir:
         a[0] = secret
 
         for i in range(1, self.k):
-            a[i] = prng.getRandomLong(256) % self.P
+            a[i] = prng.getRandomLong(512) % self.P
 
         x = []
 
