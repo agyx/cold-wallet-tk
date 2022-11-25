@@ -12,7 +12,7 @@ from io import BytesIO
 import bip39
 import optparse
 
-version = "v2.1.0"
+version = "v3.0.0"
 
 pwcharset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -109,8 +109,28 @@ class Prng:
         return result
 
 
+def bytes2long(_bytes):
+    result = 0
+    for byte in _bytes:
+        result <<= 8
+        result |= byte
+    return result
+
+
+def long2str(value, mapfn, modulo, length):
+    work_value = value
+    result = ""
+    for _ in range(length):
+        result += mapfn(work_value % modulo)
+        work_value //= modulo
+        if work_value <= modulo:
+            raise OverflowError
+    return result
+
+
 def genRandomInteractive(prng, lang="english"):
     result = prng.getRandomBytes(length=64)
+    long_result = bytes2long(result)
     hexResult = binascii.hexlify(result)
 
     offset = 0
@@ -134,17 +154,13 @@ def genRandomInteractive(prng, lang="english"):
     print("256 bits: " + seed256bits.decode("utf-8"))
     # print "512 bits: " + hexResult[offset:offset+128]
     print("")
-    print("Password (16 chars): %s" % (
-        "".join(map(mapPasswordChar, result[:16]))))
-    print("Password (24 chars): %s" % (
-        "".join(map(mapPasswordChar, result[:24]))))
-    print("Password (32 chars): %s" % (
-        "".join(map(mapPasswordChar, result[:32]))))
-    print("Password (48 chars): %s" % (
-        "".join(map(mapPasswordChar, result[:48]))))
-    print("Password (32 digits): %s" % (
-        "".join(map(mapPasswordDigit, result[:32]))))
-    # print "Password (64 chars, %3d bits entropy): %s" % (int(log2(len(pwcharset))*64), password64)
+    print("Password (16 chars)  : %s" % long2str(long_result, mapPasswordChar, len(pwcharset), 16))
+    print("Password (24 chars)  : %s" % long2str(long_result, mapPasswordChar, len(pwcharset), 24))
+    print("Password (32 chars)  : %s" % long2str(long_result, mapPasswordChar, len(pwcharset), 32))
+    print("Password (48 chars)  : %s" % long2str(long_result, mapPasswordChar, len(pwcharset), 48))
+    print("Password (6 digits)  : %s" % long2str(long_result, mapPasswordDigit, 10, 6))
+    print("Password (12 digits) : %s" % long2str(long_result, mapPasswordDigit, 10, 12))
+    print("Password (32 digits) : %s" % long2str(long_result, mapPasswordDigit, 10, 32))
     print("")
     print("BIP39 12 words: " + " ".join(bip39Seed12))
     print("BIP39 24 words: " + " ".join(bip39Seed24))
