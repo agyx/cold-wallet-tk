@@ -13,9 +13,9 @@ version = "v0.4.0"
 
 def genKey(label, seed=None):
     prng = Prng(deterministic=True, seed=seed)
-    prng.addEntropy(label.encode("utf-8"))
+    prng.add_entropy(label.encode("utf-8"))
     prng.skip(64 * 100000)
-    return prng.getRandomBytes(32)
+    return prng.random_bytes(32)
 
 
 if __name__ == "__main__":

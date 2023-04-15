@@ -12,6 +12,8 @@ from io import BytesIO
 import bip39
 import optparse
 
+from hmac_drbg import HmacDrbg
+
 version = "v3.0.0"
 
 pwcharset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -27,86 +29,40 @@ class Prng:
 
     def __init__(self, deterministic=False, seed=b""):
         self.deterministic = deterministic
-        self.key = b'\x00' * 64
-        self.val = b'\x01' * 64
-        self.reseed(seed)
-        self.stream = BytesIO()
-        self.streamlen = 0
         self.round = 0
         self.timestampRef = 0
-
-    def addEntropy(self, entropy):
-        self.reseed(entropy)
-
-    def hmac(self, key, val):
-        return hmac.new(key, val, hashlib.sha512).digest()
-
-    def reseed(self, data=b""):
-        self.key = self.hmac(self.key, self.val + b'\x00' + data)
-        self.val = self.hmac(self.key, self.val)
-
-        if data:
-            self.key = self.hmac(self.key, self.val + b'\x01' + data)
-            self.val = self.hmac(self.key, self.val)
-
-    def produceRandomData(self):
-        if not self.deterministic:
-            self.addExternalEntropy()
-        self.val = self.hmac(self.key, self.val)
-        self.stream.write(self.val)
-        self.streamlen += len(self.val)
-        self.round += 1
+        self.impl = HmacDrbg(seed=seed)
 
     def addExternalEntropy(self):
-        self.addEntropy(os.urandom(64))
+        self.add_entropy(os.urandom(64))
         now = time.time()
-        self.addEntropy(("%.20f" % now).encode("utf-8"))
+        self.add_entropy(("%.20f" % now).encode("utf-8"))
         delta = now - self.timestampRef
         self.timestampRef = now
-        self.addEntropy(("%.20f" % delta).encode("utf-8"))
-        self.addEntropy(("%d" % os.getpid()).encode("utf-8"))
-        self.addEntropy(("%d" % os.getppid()).encode("utf-8"))
+        self.add_entropy(("%.20f" % delta).encode("utf-8"))
+        self.add_entropy(("%d" % os.getpid()).encode("utf-8"))
+        self.add_entropy(("%d" % os.getppid()).encode("utf-8"))
 
     def skip(self, nBytes):
-        if nBytes <= self.streamlen:
-            self.getRandomBytes(nBytes)
-        else:
-            leftToSkipped = nBytes
-            buflen = 1000000
-            while leftToSkipped > buflen:
-                self.getRandomBytes(buflen)
-                leftToSkipped -= buflen
-            self.getRandomBytes(leftToSkipped)
+        self.random_bytes(nBytes)
 
-    def getRandomBytes(self, length):
-        while self.streamlen < length:
-            self.produceRandomData()
-        streamstr = self.stream.getvalue()
-        # print("len(streamstr): {:d}".format(len(streamstr)))
-        # print("self.streamlen: {:d}".format(self.streamlen))
-        result = streamstr[:length]
-
-        # we discard the remainder of the buffer because
-        # for unknown reasons, the init string of StringIO()
-        # is sometimes discarded
-
-        # new_stream_string = streamstr[length:]
-        # self.streamlen = len(new_stream_string)
-        self.stream = BytesIO()
-        self.streamlen = 0
-
-        return result
+    def add_entropy(self, entropy):
+        self.impl.add_entropy(entropy)
 
     def getRandomLong(self, nBits):
         if nBits % 8 != 0:
             raise ValueError("argument should be a multiple of 8: %d" % nBits)
         nBytes = nBits // 8
-        rnTable = self.getRandomBytes(nBytes)
+        rnTable = self.random_bytes(nBytes)
         result = 0
         if nBytes >= 1:
             for i in range(nBytes):
                 result = (result << 8) + rnTable[i]
         return result
+
+    def random_bytes(self, size):
+        self.round += 1
+        return self.impl.random_bytes(size)
 
 
 def bytes2long(_bytes):
@@ -129,7 +85,7 @@ def long2str(value, mapfn, modulo, length):
 
 
 def genRandomInteractive(prng, lang="english"):
-    result = prng.getRandomBytes(length=64)
+    result = prng.random_bytes(size=64)
     long_result = bytes2long(result)
     hexResult = binascii.hexlify(result)
 
@@ -184,7 +140,7 @@ if __name__ == "__main__":
         from genkey import genKey
 
         userdata = getpass.getpass("What's up today? :")
-        prng.addEntropy(genKey(userdata, prng.getRandomBytes(32)))
+        prng.add_entropy(genKey(userdata, prng.impl.random_bytes(32)))
         genRandomInteractive(prng, options.lang)
 
     # """
