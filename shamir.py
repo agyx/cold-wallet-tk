@@ -70,7 +70,7 @@ class Shamir:
             raise ValueError("secret must be smaller than P")
 
         prng = Prng(deterministic=deterministic)
-        prng.addEntropy(secret.to_bytes(512, byteorder="big"))
+        prng.add_entropy(secret.to_bytes(512, byteorder="big"))
 
         a = [0] * self.k
 
@@ -141,7 +141,7 @@ class ShareProtocolV1(object):
 
     def encode(self, share):
         prng = Prng(deterministic=self.deterministic)
-        prng.addEntropy(share[0].to_bytes(512, byteorder="big") + share[1].to_bytes(512, byteorder="big"))
+        prng.add_entropy(share[0].to_bytes(512, byteorder="big") + share[1].to_bytes(512, byteorder="big"))
         result = b""
         result += bytes([prng.getRandomLong(8) & 0xF0 | self.version])
         result += bytes([prng.getRandomLong(8) & 0xF0 | self.k])
