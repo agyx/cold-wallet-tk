@@ -11,7 +11,7 @@ import getpass
 version = "v0.4.0"
 
 
-def genKey(label, seed=None):
+def genKey(label, seed=b""):
     prng = Prng(deterministic=True, seed=seed)
     prng.add_entropy(label.encode("utf-8"))
     prng.skip(64 * 100000)
