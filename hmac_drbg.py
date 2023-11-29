@@ -11,7 +11,7 @@ class HmacDrbg:
     """
     HMAC_DRBG (SHA-512) as specified in NIST SP 800-90A.
     http://csrc.nist.gov/publications/nistpubs/800-90A/SP800-90A.pdf
-    Proof that HMAC_DRBG has not backdoor:
+    Proof that HMAC_DRBG has no backdoor:
     https://www.schneier.com/blog/archives/2017/08/proof_that_hmac.html
     """
 
