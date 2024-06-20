@@ -115,8 +115,8 @@ def long2str(value, charset, length):
 
 
 def get_words_password(value, nwords=4, uppercase=False, sep=' ', digits=False):
-    (arr, entropy) = split_value(value, nwords, 2048)
-    dico = bip39words.bip39Words["french"].split("\n")
+    dico = open("mots_francais.txt").read().split("\n")
+    (arr, entropy) = split_value(value, nwords, len(dico))
     result = []
     count = 1
     for index in arr:
@@ -132,7 +132,7 @@ def get_words_password(value, nwords=4, uppercase=False, sep=' ', digits=False):
 
 # def show_password(prompt, value, charset):
 
-    
+
 def genRandomInteractive(prng, lang="english"):
     result = prng.random_bytes(size=64)
     long_result = bytes2long(result)
@@ -153,9 +153,9 @@ def genRandomInteractive(prng, lang="english"):
     print("256 bits: " + seed256bits.decode("utf-8"))
     # print "512 bits: " + hexResult[offset:offset+128]
     print("")
-    print("Unique ID (6 chars)  : %s" % long2str(long_result, unique_id_charset, 6))
+    print("Unique key (6 chars)  : %s" % long2str(long_result, unique_id_charset, 6))
     print("")
-    # print("Password (16 chars)  : %s" % long2str(long_result, pwcharset, 16))
+    print("Password (16 chars)  : %s" % long2str(long_result, pwcharset, 16))
     print("Password (24 chars)  : %s" % long2str(long_result, pwcharset, 24))
     print("Password (32 chars)  : %s" % long2str(long_result, pwcharset, 32))
     print("Password (48 chars)  : %s" % long2str(long_result, pwcharset, 48))
@@ -166,9 +166,11 @@ def genRandomInteractive(prng, lang="english"):
     # print("Password (16 digits) : %s" % long2str(long_result, "0123456789", 16))
     # print("Password (32 digits) : %s" % long2str(long_result, "0123456789", 32))
     print("")
-    # print("Password (4 words)  : %s" % get_words_password(long_result))
+    print("Password (4 words)  : %s" % get_words_password(long_result))
+    print("Password (5 words)  : %s" % get_words_password(long_result, nwords=5))
+    print("Password (6 words)  : %s" % get_words_password(long_result, nwords=6))
     # print("Password (4 words)  : %s" % get_words_password(long_result, sep=";", uppercase=True, digits=True))
-    # print("")
+    print("")
     print("BIP39 12 words: " + " ".join(bip39Seed12))
     print("BIP39 24 words: " + " ".join(bip39Seed24))
     print("--------------------------------------------------------------------------------")
